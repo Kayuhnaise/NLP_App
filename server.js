@@ -1,5 +1,5 @@
 import express from "express";
-import cookieSession from "cookie-session";
+import session from "express-session";
 import passport from "passport";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -122,13 +122,16 @@ if (isProd) {
 }
 
 app.use(
-  cookieSession({
-    name: "session",
-    keys: [process.env.SESSION_SECRET || "change-me"],
-    maxAge: 24 * 60 * 60 * 1000, // 1 day
-    httpOnly: true,
-    sameSite: isProd ? "none" : "lax",
-    secure: isProd, // only over HTTPS in production
+  session({
+    secret: process.env.SESSION_SECRET || "super-secret-string",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      sameSite: isProd ? "none" : "lax",
+      secure: isProd,              // true only in HTTPS (Vercel)
+    },
   })
 );
 
@@ -147,6 +150,7 @@ passport.deserializeUser((user, done) => done(null, user));
 /* -----------------------------------------
    GOOGLE STRATEGY
 ------------------------------------------ */
+
 passport.use(
   new GoogleStrategy(
     {
