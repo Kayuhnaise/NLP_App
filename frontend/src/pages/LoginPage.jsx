@@ -1,11 +1,18 @@
 import React from "react";
 import "./LoginPage.css";
 
-export default function LoginPage() {
-  const API_BASE = process.env.REACT_APP_API_BASE_URL;
+const API_BASE =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:3000";
 
-window.location.href = `${API_BASE}/auth/google`;
-window.location.href = `${API_BASE}/auth/facebook`;
+export default function LoginPage() {
+  const handleGoogle = () => {
+    window.location.href = `${API_BASE}/auth/google`;
+  };
+
+  const handleFacebook = () => {
+    window.location.href = `${API_BASE}/auth/facebook`;
+  };
+
 
   return (
     <div className="login-container">
