@@ -29,7 +29,6 @@ const FACEBOOK_CALLBACK_URL =
 const isProd =
   process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
 
-
 /* -----------------------------------------
    GEMINI CLIENT
 ------------------------------------------ */
@@ -70,7 +69,7 @@ This text is classified as ${label}.
 }
 
 /**
- * Extract top unique nouns as keywords.
+ * Extract top unique noun phrases as keywords that actually appear in the text.
  */
 function extractKeywords(text, max = 10) {
   const doc = nlp(text);
@@ -83,9 +82,9 @@ function extractKeywords(text, max = 10) {
     if (!phrase) continue;
 
     let cleaned = phrase
-      .replace(/[“”"()]/g, "")            // remove quotes/parentheses
-      .replace(/[.,!?;:]+$/g, "")          // remove trailing punctuation
-      .replace(/^[.,!?;:]+/g, "")          // remove leading punctuation
+      .replace(/[“”"()]/g, "") // remove quotes/parentheses
+      .replace(/[.,!?;:]+$/g, "") // remove trailing punctuation
+      .replace(/^[.,!?;:]+/g, "") // remove leading punctuation
       .trim();
 
     if (!cleaned) continue;
@@ -103,7 +102,6 @@ function extractKeywords(text, max = 10) {
 
   return Array.from(keywordMap.values()).slice(0, max);
 }
-
 
 /**
  * Simple rule-based text classification with more categories.
@@ -137,9 +135,8 @@ Text:
   };
 }
 
-
 /**
- * Generic helper to call Gemini Responses API.
+ * Generic helper to call Gemini.
  */
 async function callLLM(prompt) {
   try {
@@ -151,7 +148,6 @@ async function callLLM(prompt) {
     return null; // fallback friendly behavior
   }
 }
-
 
 /**
  * Smart summary using Gemini (paraphrased, 2–4 sentences).
@@ -175,7 +171,6 @@ Summarize the following text in 2–4 clear, simple sentences:
   return { summary };
 }
 
-
 /**
  * Chat reply using Gemini.
  */
@@ -189,14 +184,12 @@ You are a friendly AI assistant. Respond conversationally to:
 
   if (!reply) {
     return {
-      reply:
-        "Gemini is temporarily unavailable. Try again later!",
+      reply: "Gemini is temporarily unavailable. Try again later!",
     };
   }
 
   return { reply };
 }
-
 
 /**
  * Central NLP operation router.
@@ -235,19 +228,32 @@ async function runNlpOperation(text, operation) {
 }
 
 /* -----------------------------------------
-   MIDDLEWARE
+   MIDDLEWARE (with mobile-friendly CORS)
 ------------------------------------------ */
+
+// Helpful for debugging origins (especially on mobile)
+app.use((req, res, next) => {
+  console.log("Origin:", req.headers.origin);
+  next();
+});
+
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: [
+      FRONTEND_URL,
+      "https://nlp-app-frontend.vercel.app",
+      "https://www.nlp-app-frontend.vercel.app",
+      /\.vercel\.app$/, // allow Vercel preview deployments
+    ],
     credentials: true,
   })
 );
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 if (isProd) {
-  // Needed when behind a proxy (like Vercel)
+  // Needed when behind a proxy (like Vercel) so secure cookies work
   app.set("trust proxy", 1);
 }
 
@@ -332,10 +338,7 @@ app.get(
 );
 
 // Facebook login
-app.get(
-  "/auth/facebook",
-  passport.authenticate("facebook")
-);
+app.get("/auth/facebook", passport.authenticate("facebook"));
 
 app.get(
   "/auth/facebook/callback",
