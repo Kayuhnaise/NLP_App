@@ -68,8 +68,9 @@ NLP Libraries
 -Custom keyword and entity extraction utilities
 -Gemini for LLM-powered features (summary, chat, classification)
 ______________________________________________________________________________________
-### Project Structure
+Project Structure
 
+```
 root/
 │
 ├── backend/
@@ -90,8 +91,7 @@ root/
 │   └── .env
 │
 └── README.md
-
-###
+```
 ______________________________________________________________________________________
 Environment Variables
 
