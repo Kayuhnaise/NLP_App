@@ -74,10 +74,36 @@ This text is classified as ${label}.
  */
 function extractKeywords(text, max = 10) {
   const doc = nlp(text);
-  const nouns = doc.nouns().out("array");
-  const unique = [...new Set(nouns.map((w) => w.toLowerCase()))];
-  return unique.slice(0, max);
+  const candidates = doc.nouns().out("array");
+  const textLower = text.toLowerCase();
+
+  const keywordMap = new Map();
+
+  for (let phrase of candidates) {
+    if (!phrase) continue;
+
+    let cleaned = phrase
+      .replace(/[“”"()]/g, "")            // remove quotes/parentheses
+      .replace(/[.,!?;:]+$/g, "")          // remove trailing punctuation
+      .replace(/^[.,!?;:]+/g, "")          // remove leading punctuation
+      .trim();
+
+    if (!cleaned) continue;
+
+    const normalized = cleaned.toLowerCase();
+
+    // Avoid duplicates
+    if (keywordMap.has(normalized)) continue;
+
+    // Ensure phrase appears in the text (ignoring case)
+    if (!textLower.includes(normalized)) continue;
+
+    keywordMap.set(normalized, cleaned);
+  }
+
+  return Array.from(keywordMap.values()).slice(0, max);
 }
+
 
 /**
  * Simple rule-based text classification with more categories.
