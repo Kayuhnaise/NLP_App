@@ -237,17 +237,17 @@ ________________________________________________________________________________
 Deployment on Vercel
 
   - Push the full project to GitHub.
-  - 
+    
   - Go to Vercel and import the repository.
-  - 
+    
   - Configure backend environment variables in Vercel → Settings → Environment Variables.
-  - 
+    
   - Ensure the backend exports the Express app and does not call app.listen in Vercel environments.
-  - 
+    
   - Deploy frontend and backend as separate Vercel projects or as a monorepo if desired.
-  - 
+    
   - Update the frontend .env to use the deployed API base URL.
-  - 
+    
 ______________________________________________________________________________________
 
 Gemini Integration Notes
