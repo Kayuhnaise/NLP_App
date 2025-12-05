@@ -229,7 +229,7 @@ function ResultCard({ operation, result, inputText }) {
     }
 
     default:
-      // Fallback: show JSON nicely if we ever add new ops
+      // Fallback: show JSON nicely if add new ops
       return (
         <div className="result-card">
           <pre className="nlp-result-pre">
@@ -258,9 +258,11 @@ export default function Dashboard() {
       });
 
       if (res.status === 401) {
-        window.location.href = "/login";
-        return;
+        console.warn("Not authenticated yet. Retrying...");
+        setTimeout(loadUser, 300);
+      return;
       }
+
 
       const data = await res.json();
       setUser(data);
@@ -289,10 +291,14 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+  const timer = setTimeout(() => {
     loadUser();
     loadAnalyses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, 300); // give cookies time to settle
+
+  return () => clearTimeout(timer);
+}, []);
+
 
   /* -----------------------------
      RUN NLP ANALYSIS

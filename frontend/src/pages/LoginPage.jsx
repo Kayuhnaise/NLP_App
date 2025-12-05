@@ -5,13 +5,14 @@ const API_BASE =
   process.env.REACT_APP_API_BASE_URL || "http://localhost:3000";
 
 export default function LoginPage() {
-  const handleGoogle = () => {
-    window.location.href = `${API_BASE}/auth/google`;
-  };
+ const handleGoogle = () => {
+  window.location.assign(`${API_BASE}/auth/google?redirect=${window.location.origin}/dashboard`);
+};
 
-  const handleFacebook = () => {
-    window.location.href = `${API_BASE}/auth/facebook`;
-  };
+const handleFacebook = () => {
+  window.location.assign(`${API_BASE}/auth/facebook?redirect=${window.location.origin}/dashboard`);
+};
+
 
 
   return (
