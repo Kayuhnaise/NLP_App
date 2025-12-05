@@ -1,198 +1,183 @@
-Social Login + CRUD Application
+NLP Application with OAuth Login, Google Gemini NLP Features, and Vercel Deployment
 
-A full-stack web application that implements Google/Facebook OAuth login, a Node.js/Express backend, a React frontend, CRUD operations, Jest testing, and JMeter performance testing (100/250/500 user load).
-
+This project is a full-stack Natural Language Processing (NLP) application that allows users to authenticate using Google (and optionally Facebook), analyze text with multiple NLP operations, store analysis history, and interact with a modern UI. The backend is powered by Node.js, Express, Passport for OAuth, and Google Gemini for LLM-based features. The frontend is built with React and deployed alongside the backend on Vercel.
+______________________________________________________________________________________
 Features
-Authentication
 
-Google OAuth 2.0 login
+User Authentication
+-Google OAuth 2.0 login
+-Facebook Login
+-Secure session management using express-session
+-User profile display with avatar and name
 
-Facebook OAuth login
+NLP Operations
+The application supports the following text analysis tools:
 
-User session support
+Sentiment Analysis
+  -Local sentiment calculation with score, comparative value, detected positive/negative words, and a sentiment meter.
+Summary (LLM Powered with Gemini)
+   -Uses Google Gemini to generate concise, paraphrased summaries.
+Keywords Extraction
+   -Identifies important terms in the input text.
+Named Entities
+  -Extracts simple entities such as people, places, and organizations.
+Classification (LLM Powered with Gemini)
+  -Classifies text into bug report, question, complaint, praise, feature request, or other.
+Chat / Assistant Response
+  -Allows free interaction with a Gemini-powered conversational assistant.
 
-Protected dashboard route
+Dashboard UI
+-Tabs for each NLP feature
+-Rich, custom-styled result cards for each analysis type
+-Chat bubbles for assistant interactions
+-Keyword chips, entity columns, sentiment meters
+-Fully responsive design
+-Input text history with ability to expand/collapse past analyses
+-Delete entries from history
 
+Storage
+-Stores analyses in a database model (via Prisma)
+-Each entry includes text, operation type, result object, timestamp, and user
 
-Frontend (React)
+Deployment
+-Backend deployed to Vercel as a serverless Node.js application
+-Frontend React app deployed on Vercel and configured to call backend API routes
+-Environment variables securely configured in Vercel dashboard
+-Gemini API integration fully supported in Vercel’s serverless environment
+______________________________________________________________________________________
+Technology Stack
 
-Modern UI (Login, Dashboard, Item list, Item form)
-
-Item CRUD interface
-
-Fully tested using React Testing Library + Jest
-
-
-Backend (Node.js)
-
-REST API (/api/items)
-
-CRUD endpoints: GET, POST, PUT, DELETE
-
-Passport.js OAuth integration
-
-Session & cookie management
-
-Validation & error handling
-
-Full backend test suite with Jest + Supertest
-
-
-Performance Testing
-
-Apache JMeter load tests at:
-
-100 users
-
-250 users
-
-500 users
-
-
-Metrics collected:
-
-Response time (avg, min, max)
-
-Throughput
-
-Received/sent KB per sec
-
-Standard deviation
-
-Error % (0% across all tests)
-
-🛠️ Tech Stack
 Frontend
-
-React 19
-
-React Router
-
-CSS Modules
-
-Jest + React Testing Library
-
+-React
+-React Router
+-Custom dashboard UI and CSS
+-Deployed on Vercel
 
 Backend
+-Node.js
+-Express
+-Passport.js (Google and Facebook strategies)
+-Sessions with express-session
 
-Node.js / Express
+Prisma ORM
+-Google Gemini (@google/generative-ai)
+-Deployed on Vercel as a serverless app
 
-Passport.js
-
-Google OAuth 2.0
-
-Facebook OAuth
-
-Express-session
-
-Jest + Supertest
-
-Performance Tools
-
-Apache JMeter
-
+NLP Libraries
+-sentiment (local sentiment scoring)
+-Custom keyword and entity extraction utilities
+-Gemini for LLM-powered features (summary, chat, classification)
+______________________________________________________________________________________
 Project Structure
-social-login-app/
+
+root/
+│
+├── backend/
+│   ├── server.js
+│   ├── prisma/
+│   │   └── schema.prisma
+│   ├── package.json
+│   └── .env (not committed)
 │
 ├── frontend/
-│   ├── public/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── _tests_/
 │   │   ├── App.js
-│   │   └── index.js
-│   └── package.json
+│   │   ├── Dashboard.jsx
+│   │   ├── Dashboard.css
+│   │   └── components/...
+│   ├── public/
+│   ├── package.json
+│   └── .env
 │
-├── server.js
-├── views/
-├── tests/ (backend tests)
-├── package.json
 └── README.md
+______________________________________________________________________________________
+Environment Variables
 
-Getting Started
-1. Clone the repository
-git clone https://github.com/<your-username>/<repo-name>.git
-cd social-login-app
+Backend (.env on Vercel and locally)
 
-Backend Setup
-Install dependencies
-npm install
+SESSION_SECRET=your_session_secret
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_CALLBACK_URL=https://nlp-app-backend.vercel.app/auth/google/callback
 
-Create .env file
-GOOGLE_CLIENT_ID=xxxx
-GOOGLE_CLIENT_SECRET=xxxx
-FACEBOOK_CLIENT_ID=xxxx
-FACEBOOK_CLIENT_SECRET=xxxx
-SESSION_SECRET=your-session-secret
+FACEBOOK_APP_ID=your_facebook_client_id
+FACEBOOK_APP_SECRET=your_facebook_client_secret
+FACEBOOK_CALLBACK_URL=https://nlp-app-backend.vercel.app/auth/facebook/callback
 
-Start backend server
-node server.js
+GEMINI_API_KEY=your_google_ai_studio_key
+FRONTEND_URL=https://nlp-app-frontend.vercel.app
 
+Frontend (.env)
+REACT_APP_API_BASE_URL=https://nlp-app-backend.vercel.app
+______________________________________________________________________________________
+Running the Project Locally
 
-Backend runs at:
-http://localhost:3000
+1. Install dependencies
+  Backend:
+    cd backend
+    npm install
+  Frontend:
+    cd frontend
+    npm install
 
-Frontend Setup
-cd frontend
-npm install
-npm start
+2. Start the backend
+    npm start
+  The backend will run on:
+    http://localhost:3000
 
+3. Start the frontend
+    npm start
+   The frontend will run on:
+    http://localhost:3001
 
-Frontend runs at:
-http://localhost:3001
+4. Login and analyze text
+  Navigate to the frontend
+  Log in with Google
+  Enter text and select an NLP operation
+  View results and history in the dashboard
+______________________________________________________________________________________
+Deployment on Vercel
+  - Push the full project to GitHub.
+  - Go to Vercel and import the repository.
+  - Configure backend environment variables in Vercel → Settings → Environment Variables.
+  - Ensure the backend exports the Express app and does not call app.listen in Vercel environments.
+  - Deploy frontend and backend as separate Vercel projects or as a monorepo if desired.
+  - Update the frontend .env to use the deployed API base URL.
+______________________________________________________________________________________
+Gemini Integration Notes
 
-Testing
-Backend tests
-npm test
-
-Frontend tests
-cd frontend
-npm test --coverage
-
-
-Produces interactive coverage report and HTML coverage.
-
-Performance Testing (JMeter)
-
-
-Files included:
-
-100-user test summary
-
-250-user test summary
-
-500-user test summary
-
-Full performance analysis included in report Software Testing Report for Social Login + CRUD Application.docx
-
-
-Key observations:
-
-No errors detected across all tests
-
-Backend stable up to 500 users
-
-Throughput increased linearly across loads
-
-Average response times remained low
-
-No bottlenecks detected for this scale
+The backend uses:
+  import { GoogleGenerativeAI } from "@google/generative-ai";
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const geminiModel = genAI.getGenerativeModel({
+    model: "gemini-flash-latest"
+  });
 
 
-Authentication Flow
+This supports:
+  -generateContent for summaries
+  -classification prompts
+  -conversational prompts
 
-User clicks Login with Google/Facebook
+Fallback behavior is implemented in case the API fails or rate limits are hit.
+______________________________________________________________________________________
+Authentication Notes
 
-Redirects to OAuth provider
+  Google OAuth and Facebook OAuth are the authentication methods.
+  User profiles and their metadata are stored in the database. 
+  Sessions persist via cookies.
+______________________________________________________________________________________
+History Storage
 
-User authorizes
+Each analysis is stored in the database with:
+  -id
+  -userId
+  -inputText
+  -operation
+  -result (JSON)
+  -createdAt
 
-Provider returns access token
-
-Session stored in Express
-
-User is redirected to Dashboard
-
-CRUD API is available to authenticated users only
-
+The history panel in the dashboard allows:
+  -Expanding details
+  -Viewing past results with the same card layouts
+  -Deleting entries
