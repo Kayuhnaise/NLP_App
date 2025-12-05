@@ -7,6 +7,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as FacebookStrategy } from "passport-facebook";
 import Sentiment from "sentiment";
 import nlp from "compromise";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dotenv.config();
 
@@ -28,77 +29,187 @@ const FACEBOOK_CALLBACK_URL =
 const isProd =
   process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
 
+
+/* -----------------------------------------
+   GEMINI CLIENT
+------------------------------------------ */
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const geminiModel = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+
 /* -----------------------------------------
    NLP HELPERS
 ------------------------------------------ */
 const sentiment = new Sentiment();
 
-async function runNlpOperation(text, operation) {
-  if (!text || !text.trim()) {
-    throw new Error("No text provided");
+/**
+ * Sentiment analysis with user-friendly explanation.
+ */
+function getSentimentAnalysis(text) {
+  const raw = sentiment.analyze(text);
+
+  let label = "neutral";
+  if (raw.score > 1) label = "positive";
+  else if (raw.score < -1) label = "negative";
+
+  const explanation = `
+Score: ${raw.score} (overall sentiment; positive = more positive words, negative = more negative words)
+Comparative: ${raw.comparative.toFixed(
+    3
+  )} (score divided by text length; helps compare long vs short texts)
+This text is classified as ${label}.
+`.trim();
+
+  return {
+    label,
+    score: raw.score,
+    comparative: raw.comparative,
+    positive: raw.positive,
+    negative: raw.negative,
+    explanation,
+  };
+}
+
+/**
+ * Extract top unique nouns as keywords.
+ */
+function extractKeywords(text, max = 10) {
+  const doc = nlp(text);
+  const nouns = doc.nouns().out("array");
+  const unique = [...new Set(nouns.map((w) => w.toLowerCase()))];
+  return unique.slice(0, max);
+}
+
+/**
+ * Simple rule-based text classification with more categories.
+ */
+async function classifyText(text) {
+  const prompt = `
+Classify the following text into one of these categories:
+- bug report
+- complaint
+- praise
+- question
+- feature request
+- other
+
+Return ONLY the category and one short sentence explaining why.
+
+Text:
+"${text}"
+  `;
+
+  const output = await callLLM(prompt);
+
+  if (!output) {
+    return { label: "other", reason: "Fallback classifier." };
   }
 
-  switch (operation) {
-    case "sentiment": {
-      const result = sentiment.analyze(text);
-      return {
-        score: result.score,
-        comparative: result.comparative,
-        positive: result.positive,
-        negative: result.negative,
-      };
-    }
+  const [labelLine, ...reasonLines] = output.split("\n");
+  return {
+    label: labelLine.trim().toLowerCase(),
+    reason: reasonLines.join(" ").trim(),
+  };
+}
 
-    case "summary": {
-      const sentences = text.split(/(?<=[.!?])\s+/);
-      const summary = sentences.slice(0, 2).join(" ");
-      return { summary };
-    }
+
+/**
+ * Generic helper to call Gemini Responses API.
+ */
+async function callLLM(prompt) {
+  try {
+    const result = await geminiModel.generateContent(prompt);
+    const response = await result.response.text();
+    return response;
+  } catch (err) {
+    console.error("Gemini API error:", err);
+    return null; // fallback friendly behavior
+  }
+}
+
+
+/**
+ * Smart summary using Gemini (paraphrased, 2–4 sentences).
+ */
+async function getSmartSummary(text) {
+  const prompt = `
+Summarize the following text in 2–4 clear, simple sentences:
+
+"${text}"
+  `;
+
+  const summary = await callLLM(prompt);
+
+  if (!summary) {
+    return {
+      summary: text.slice(0, 200) + "...",
+      note: "Gemini unavailable — using fallback summary.",
+    };
+  }
+
+  return { summary };
+}
+
+
+/**
+ * Chat reply using Gemini.
+ */
+async function chatWithLLM(text) {
+  const prompt = `
+You are a friendly AI assistant. Respond conversationally to:
+"${text}"
+  `;
+
+  const reply = await callLLM(prompt);
+
+  if (!reply) {
+    return {
+      reply:
+        "Gemini is temporarily unavailable. Try again later!",
+    };
+  }
+
+  return { reply };
+}
+
+
+/**
+ * Central NLP operation router.
+ */
+async function runNlpOperation(text, operation) {
+  switch (operation) {
+    case "sentiment":
+      return getSentimentAnalysis(text);
+
+    case "summary":
+      return await getSmartSummary(text);
 
     case "keywords": {
-      const doc = nlp(text);
-      const nouns = doc.nouns().out("array");
-      const unique = [...new Set(nouns.map((n) => n.toLowerCase()))];
-      return { keywords: unique.slice(0, 10) };
+      const keywords = extractKeywords(text);
+      return { keywords };
     }
 
     case "entities": {
       const doc = nlp(text);
-      const people = doc.people().out("array");
-      const places = doc.places().out("array");
-      const organizations = doc.organizations().out("array");
-      return { people, places, organizations };
-    }
-
-    case "classify": {
-      const lower = text.toLowerCase();
-      let label = "other";
-      if (lower.includes("error") || lower.includes("bug")) label = "bug report";
-      else if (lower.includes("great") || lower.includes("love")) label = "praise";
-      else if (
-        lower.includes("refund") ||
-        lower.includes("angry") ||
-        lower.includes("upset")
-      )
-        label = "complaint";
-      return { label };
-    }
-
-    case "chat": {
-      // Placeholder: you can later swap this to call a real LLM API
       return {
-        reply:
-          "Thanks for your message! A more advanced version of this app could call a large language model here.",
+        people: doc.people().out("array"),
+        places: doc.places().out("array"),
+        organizations: doc.organizations().out("array"),
       };
     }
 
+    case "classify":
+      return classifyText(text);
+
+    case "chat":
+      return await chatWithLLM(text);
+
     default:
-      throw new Error(`Unknown operation: ${operation}`);
+      throw new Error(`Unsupported operation: ${operation}`);
   }
 }
 
 /* -----------------------------------------
-   CORS
+   MIDDLEWARE
 ------------------------------------------ */
 app.use(
   cors({
@@ -107,55 +218,49 @@ app.use(
   })
 );
 
-/* -----------------------------------------
-   BODY PARSING
------------------------------------------- */
-app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-/* -----------------------------------------
-   SESSIONS (COOKIE-SESSION FOR SERVERLESS)
------------------------------------------- */
 if (isProd) {
-  // needed so secure cookies work correctly behind Vercel's proxy
+  // Needed when behind a proxy (like Vercel)
   app.set("trust proxy", 1);
 }
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "super-secret-string",
+    secret: process.env.SESSION_SECRET || "supersecret",
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      secure: isProd, // true in production (HTTPS)
       sameSite: isProd ? "none" : "lax",
-      secure: isProd,              // true only in HTTPS (Vercel)
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
 );
 
-/* -----------------------------------------
-   PASSPORT INIT
------------------------------------------- */
 app.use(passport.initialize());
 app.use(passport.session());
 
 /* -----------------------------------------
    PASSPORT SERIALIZATION
 ------------------------------------------ */
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((user, done) => done(null, user));
+passport.serializeUser((user, done) => {
+  done(null, user);
+});
+
+passport.deserializeUser((obj, done) => {
+  done(null, obj);
+});
 
 /* -----------------------------------------
    GOOGLE STRATEGY
 ------------------------------------------ */
-
 passport.use(
   new GoogleStrategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientID: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       callbackURL: GOOGLE_CALLBACK_URL,
     },
     (accessToken, refreshToken, profile, done) => {
@@ -170,8 +275,8 @@ passport.use(
 passport.use(
   new FacebookStrategy(
     {
-      clientID: process.env.FACEBOOK_CLIENT_ID,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+      clientID: process.env.FACEBOOK_CLIENT_ID || "",
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
       callbackURL: FACEBOOK_CALLBACK_URL,
       profileFields: ["id", "displayName", "emails", "photos"],
     },
@@ -182,25 +287,9 @@ passport.use(
 );
 
 /* -----------------------------------------
-   HOME ROUTE
------------------------------------------- */
-app.get("/", (req, res) => {
-  res.send(`
-    <h1>Social Login + NLP Backend (Vercel)</h1>
-    <p>Your backend is running.</p>
-    <p><strong>Frontend:</strong> <a href="${FRONTEND_URL}">${FRONTEND_URL}</a></p>
-
-    <h3>Test OAuth directly:</h3>
-    <ul>
-      <li><a href="/auth/google">Login with Google</a></li>
-      <li><a href="/auth/facebook">Login with Facebook</a></li>
-    </ul>
-  `);
-});
-
-/* -----------------------------------------
    AUTH ROUTES
 ------------------------------------------ */
+// Google login
 app.get(
   "/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -208,18 +297,24 @@ app.get(
 
 app.get(
   "/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: "/?error=google_failed" }),
+  passport.authenticate("google", {
+    failureRedirect: `${FRONTEND_URL}/login?error=google`,
+  }),
   (req, res) => {
     res.redirect(`${FRONTEND_URL}/dashboard`);
   }
 );
 
-app.get("/auth/facebook", passport.authenticate("facebook"));
+// Facebook login
+app.get(
+  "/auth/facebook",
+  passport.authenticate("facebook")
+);
 
 app.get(
   "/auth/facebook/callback",
   passport.authenticate("facebook", {
-    failureRedirect: "/?error=facebook_failed",
+    failureRedirect: `${FRONTEND_URL}/login?error=facebook`,
   }),
   (req, res) => {
     res.redirect(`${FRONTEND_URL}/dashboard`);
@@ -227,48 +322,55 @@ app.get(
 );
 
 /* -----------------------------------------
-   PROFILE ROUTE
+   PROFILE & LOGOUT
 ------------------------------------------ */
 app.get("/profile", (req, res) => {
-  if (!req.user) return res.status(401).json({ error: "Not authenticated" });
+  if (!req.user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const user = req.user;
 
   res.json({
-    id: req.user.id,
-    displayName: req.user.displayName,
-    email: req.user.emails?.[0]?.value || null,
-    photo: req.user.photos?.[0]?.value || null,
+    id: user.id,
+    displayName: user.displayName,
+    email: user.emails?.[0]?.value || null,
+    photo: user.photos?.[0]?.value || null,
+  });
+});
+
+app.get("/logout", (req, res, next) => {
+  req.logout((err) => {
+    if (err) return next(err);
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid");
+      res.json({ message: "Logged out" });
+    });
   });
 });
 
 /* -----------------------------------------
-   LOGOUT ROUTE
------------------------------------------- */
-app.get("/logout", (req, res) => {
-  req.logout(() => {
-    req.session = null; // clears cookie-session
-    res.json({ message: "Logged out" });
-  });
-});
-
-/* -----------------------------------------
-   NLP ANALYSES API (CRUD-LIKE)
+   IN-MEMORY ANALYSES STORAGE
 ------------------------------------------ */
 let analyses = [];
 
-// GET all analyses
+/* -----------------------------------------
+   ANALYSES API
+------------------------------------------ */
+// List all analyses
 app.get("/api/analyses", (req, res) => {
   res.json(analyses);
 });
 
-// CREATE new analysis (runs NLP)
+// Create a new analysis
 app.post("/api/analyses", async (req, res) => {
   try {
     const { inputText, operation } = req.body;
 
     if (!inputText || !operation) {
-      return res
-        .status(400)
-        .json({ error: "inputText and operation are required" });
+      return res.status(400).json({
+        error: "inputText and operation are required",
+      });
     }
 
     const result = await runNlpOperation(inputText, operation);
@@ -284,30 +386,43 @@ app.post("/api/analyses", async (req, res) => {
     analyses.push(newAnalysis);
     res.status(201).json(newAnalysis);
   } catch (err) {
-    console.error("NLP error:", err);
-    res.status(500).json({ error: "Failed to analyze text" });
+    console.error("Error in /api/analyses:", err);
+    res.status(500).json({
+      error: "Failed to run NLP operation",
+      details: err.message,
+    });
   }
 });
 
-// UPDATE an analysis (e.g., attach notes)
+// Update an analysis
 app.put("/api/analyses/:id", (req, res) => {
   const id = Number(req.params.id);
   const idx = analyses.findIndex((a) => a.id === id);
-  if (idx === -1) return res.status(404).json({ error: "Not found" });
+
+  if (idx === -1) {
+    return res.status(404).json({ error: "Not found" });
+  }
 
   analyses[idx] = { ...analyses[idx], ...req.body };
   res.json(analyses[idx]);
 });
 
-// DELETE an analysis
+// Delete an analysis
 app.delete("/api/analyses/:id", (req, res) => {
   const id = Number(req.params.id);
   analyses = analyses.filter((a) => a.id !== id);
-  res.status(204).end();
+  res.status(204).send();
 });
 
 /* -----------------------------------------
-   LOCAL LISTEN (NOT for Vercel)
+   HEALTH CHECK
+------------------------------------------ */
+app.get("/", (req, res) => {
+  res.json({ status: "ok", message: "NLP app backend is running" });
+});
+
+/* -----------------------------------------
+   LOCAL SERVER (DEV ONLY)
 ------------------------------------------ */
 const PORT = process.env.PORT || 3000;
 
@@ -321,4 +436,3 @@ if (!process.env.VERCEL) {
    EXPORT FOR VERCEL
 ------------------------------------------ */
 export default app;
-
