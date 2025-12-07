@@ -231,11 +231,11 @@ async function runNlpOperation(text, operation) {
    MIDDLEWARE (with mobile-friendly CORS)
 ------------------------------------------ */
 
-// Helpful for debugging origins (especially on mobile)
-app.use((req, res, next) => {
-  console.log("Origin:", req.headers.origin);
-  next();
-});
+// Optional origin logging (handy for debugging mobile/Incognito)
+// app.use((req, res, next) => {
+//   console.log("Origin:", req.headers.origin);
+//   next();
+// });
 
 app.use(
   cors({
@@ -294,9 +294,19 @@ passport.use(
       clientID: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       callbackURL: GOOGLE_CALLBACK_URL,
+      // Use the newer userinfo endpoint for consistent picture field
+      userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
     },
     (accessToken, refreshToken, profile, done) => {
-      return done(null, profile);
+      const user = {
+        id: profile.id,
+        displayName: profile.displayName,
+        provider: profile.provider || "google",
+        emails: profile.emails || [],
+        photos: profile.photos || [],
+        _json: profile._json || {},
+      };
+      return done(null, user);
     }
   )
 );
@@ -313,7 +323,15 @@ passport.use(
       profileFields: ["id", "displayName", "emails", "photos"],
     },
     (accessToken, refreshToken, profile, done) => {
-      return done(null, profile);
+      const user = {
+        id: profile.id,
+        displayName: profile.displayName,
+        provider: profile.provider || "facebook",
+        emails: profile.emails || [],
+        photos: profile.photos || [],
+        _json: profile._json || {},
+      };
+      return done(null, user);
     }
   )
 );
@@ -337,7 +355,7 @@ app.get(
   }
 );
 
-// Facebook login
+// Facebook login (no custom scopes to avoid "invalid scope" errors)
 app.get("/auth/facebook", passport.authenticate("facebook"));
 
 app.get(
@@ -360,11 +378,25 @@ app.get("/profile", (req, res) => {
 
   const user = req.user;
 
+  // Robust photo resolution for both Google and Facebook
+  let photo = null;
+
+  if (user.photos && user.photos[0] && user.photos[0].value) {
+    photo = user.photos[0].value;
+  } else if (user._json && user._json.picture) {
+    // Google userinfo has "picture"
+    photo = user._json.picture;
+  } else if (user.provider === "facebook" && user.id) {
+    // Fallback: Facebook profile picture by ID
+    photo = `https://graph.facebook.com/${user.id}/picture?type=large`;
+  }
+
   res.json({
     id: user.id,
     displayName: user.displayName,
     email: user.emails?.[0]?.value || null,
-    photo: user.photos?.[0]?.value || null,
+    photo,
+    provider: user.provider || null,
   });
 });
 
