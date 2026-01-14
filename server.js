@@ -284,6 +284,16 @@ app.use(
   })
 );
 
+app.use((req, res, next) => {
+  if (req.session && !req.session.regenerate) {
+    req.session.regenerate = (cb) => cb();
+  }
+  if (req.session && !req.session.save) {
+    req.session.save = (cb) => cb();
+  }
+  next();
+});
+
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -298,11 +308,24 @@ app.use((req, res, next) => {
    PASSPORT SERIALIZATION
 ------------------------------------------ */
 passport.serializeUser((user, done) => {
-  done(null, user);
+  const photo =
+    user?.photos?.[0]?.value ||
+    user?._json?.picture ||
+    (user?.provider === "facebook" && user?.id
+      ? `https://graph.facebook.com/${user.id}/picture?type=large`
+      : null);
+
+  done(null, {
+    id: user.id,
+    displayName: user.displayName,
+    provider: user.provider,
+    email: user.emails?.[0]?.value || null,
+    photo,
+  });
 });
 
-passport.deserializeUser((obj, done) => {
-  done(null, obj);
+passport.deserializeUser((user, done) => {
+  done(null, user);
 });
 
 /* -----------------------------------------
@@ -398,7 +421,7 @@ app.get("/profile", (req, res) => {
     return res.status(401).json({ error: "Not authenticated" });
   }
 
-  const user = req.user;
+  /*const user = req.user;
 
   // Robust photo resolution for both Google and Facebook
   let photo = null;
@@ -420,6 +443,8 @@ app.get("/profile", (req, res) => {
     photo,
     provider: user.provider || null,
   });
+});*/
+ res.json(req.user);
 });
 
 /*app.get("/logout", (req, res, next) => {
@@ -439,6 +464,7 @@ app.get("/logout", (req, res, next) => {
     // cookie-session: clear the session cookie
     req.session = null;
     res.clearCookie("nlp_session");
+    res.clearCookie("nlp_session.sig");
     res.json({ message: "Logged out" });
   });
 });
