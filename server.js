@@ -1,5 +1,6 @@
 import express from "express";
-import session from "express-session";
+import cookieSession from "cookie-session";
+//import session from "express-session";
 import passport from "passport";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -257,7 +258,7 @@ if (isProd) {
   app.set("trust proxy", 1);
 }
 
-app.use(
+/*app.use(
   session({
     secret: process.env.SESSION_SECRET || "supersecret",
     resave: false,
@@ -269,10 +270,29 @@ app.use(
       maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
+);*/
+
+
+app.use(
+  cookieSession({
+    name: "nlp_session",
+    keys: [process.env.SESSION_SECRET || "supersecret"],
+    httpOnly: true,
+    secure: isProd,                 // MUST be true in production
+    sameSite: isProd ? "none" : "lax", // MUST be "none" for cross-site cookies
+    maxAge: 1000 * 60 * 60 * 24,    // 1 day
+  })
 );
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.use((req, res, next) => {
+  if (req.session && !req.session.passport) {
+    req.session.passport = {};
+  }
+  next();
+});
 
 /* -----------------------------------------
    PASSPORT SERIALIZATION
@@ -349,6 +369,7 @@ app.get(
   "/auth/google/callback",
   passport.authenticate("google", {
     failureRedirect: `${FRONTEND_URL}/login?error=google`,
+    session: true,
   }),
   (req, res) => {
     res.redirect(`${FRONTEND_URL}/dashboard`);
@@ -362,6 +383,7 @@ app.get(
   "/auth/facebook/callback",
   passport.authenticate("facebook", {
     failureRedirect: `${FRONTEND_URL}/login?error=facebook`,
+    session: true,
   }),
   (req, res) => {
     res.redirect(`${FRONTEND_URL}/dashboard`);
@@ -400,13 +422,24 @@ app.get("/profile", (req, res) => {
   });
 });
 
-app.get("/logout", (req, res, next) => {
+/*app.get("/logout", (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err);
     req.session.destroy(() => {
       res.clearCookie("connect.sid");
       res.json({ message: "Logged out" });
     });
+  });
+});*/
+
+app.get("/logout", (req, res, next) => {
+  req.logout((err) => {
+    if (err) return next(err);
+
+    // cookie-session: clear the session cookie
+    req.session = null;
+    res.clearCookie("nlp_session");
+    res.json({ message: "Logged out" });
   });
 });
 
