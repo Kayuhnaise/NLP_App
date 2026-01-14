@@ -1,18 +1,18 @@
-```markdown
+
 # NLP Application with OAuth Authentication and LLM-Powered Text Analysis
 
-This project is a full-stack **Natural Language Processing (NLP) web application** built to explore how modern NLP systems—particularly **LLM-backed features**—can be integrated into production-style workflows with attention to reliability, evaluation, and safe engineering practices. Authenticated users can submit text for analysis, view structured outputs in a dashboard, and store analysis history for review.
+This project is a full-stack Natural Language Processing (NLP) web application built to explore how modern NLP systems—particularly LLM-backed features—can be integrated into production-style workflows with attention to reliability, evaluation, and safe engineering practices. Authenticated users can submit text for analysis, view structured outputs in a dashboard, and store analysis history for review.
 
-The primary goal of this project was to learn **end-to-end ML system design**, including model integration, backend engineering, authentication, data persistence, and deployment.
-```
+The primary goal of this project was to learn end-to-end ML system design, including model integration, backend engineering, authentication, data persistence, and deployment.
+
 
 ---
 
-```markdown
-## Key Features
-```
 
-```markdown
+## Key Features
+
+
+
 ### User Authentication
 - Google OAuth 2.0 and Facebook login
 - Cookie-based session management using `cookie-session`
@@ -22,29 +22,29 @@ The primary goal of this project was to learn **end-to-end ML system design**, i
   - `sameSite: "none"` for cross-site OAuth
 - `trust proxy` enabled for Vercel deployments
 - User profile display (name and avatar)
-```
+
 
 ---
 
-```markdown
+
 ## NLP Capabilities
 The application supports multiple NLP tasks to compare local heuristics vs. LLM-based approaches:
-```
 
-```markdown
+
+
 ### Sentiment Analysis (Local Baseline)
 - Local sentiment scoring using the `sentiment` library
 - Outputs include score, comparative value, detected positive/negative words
 - Used as a baseline to contrast with LLM-based reasoning
-```
 
-```markdown
+
+
 ### Text Summarization (LLM – Google Gemini)
 - Uses Google Gemini to generate concise, paraphrased summaries
 - Prompt constraints added to reduce verbosity and hallucination
-```
 
-```markdown
+
+
 ### Text Classification (LLM – Google Gemini)
 - Classifies text into categories:
   - Bug report
@@ -54,23 +54,23 @@ The application supports multiple NLP tasks to compare local heuristics vs. LLM-
   - Feature request
   - Other
 - Designed to evaluate consistency across ambiguous inputs
-```
 
-```markdown
+
+
 ### Keyword & Entity Extraction (Heuristic)
 - Custom keyword extraction utilities
 - Simple named entity extraction for people, places, and organizations
-```
 
-```markdown
+
+
 ### Conversational Assistant (LLM – Google Gemini)
 - Gemini-powered conversational interface
 - Allows free-form interaction with structured prompt boundaries
-```
+
 
 ---
 
-```markdown
+
 ## Dashboard UI
 - Tab-based navigation for each NLP feature
 - Custom result cards per analysis type
@@ -78,38 +78,38 @@ The application supports multiple NLP tasks to compare local heuristics vs. LLM-
 - Keyword chips, entity columns, sentiment meters
 - Expandable analysis history with delete functionality
 - Fully responsive design
-```
+
 
 ---
 
-```markdown
+
 ## Storage & Data Handling
 - NLP analysis results are currently stored in-memory for demonstration
 - Each record includes:
-  - id
-  - inputText
-  - operation
-  - result (JSON)
-  - createdAt
+  - `id`
+  - `inputText`
+  - `operation`
+  - `result` (JSON)
+  - `createdAt`
 - Designed to support evaluation of model behavior over time
 - Future work includes migrating analysis storage to Prisma ORM
-```
+
 
 ---
 
-```markdown
-## Technology Stack
-```
 
-```markdown
+## Technology Stack
+
+
+
 ### Frontend
 - React
 - React Router
 - Custom dashboard UI and CSS
 - Deployed on Vercel
-```
 
-```markdown
+
+
 ### Backend
 - Node.js
 - Express
@@ -117,38 +117,38 @@ The application supports multiple NLP tasks to compare local heuristics vs. LLM-
 - Cookie-based session management using `cookie-session`
 - Prisma ORM (planned for persistence)
 - Serverless deployment on Vercel
-```
 
-```markdown
+
+
 ### NLP & AI
 - sentiment (local sentiment baseline)
 - Custom keyword and entity extraction utilities
 - Google Gemini (`@google/generative-ai`) for summarization, classification, and chat
-```
+
 
 ---
 
-```markdown
+
 ## Security Considerations
 - Explicit CORS allowlist with credential support
 - Signed, HTTP-only cookies for session integrity
 - Environment-based cookie security configuration
 - Graceful error handling for LLM failures
-```
 
-```markdown
+
+
 ### Planned Hardening
 - Per-user authorization checks
 - Rate limiting and abuse detection
 - Persistent session and analysis storage
 - Structured logging and monitoring
-```
+
 
 ---
 
-```markdown
+
 ## Project Structure
-```
+
 ```text
 root/
 ├── backend/
@@ -167,7 +167,7 @@ root/
 
 ---
 
-```markdown
+
 ## Engineering & ML Learnings
 - Integrating LLMs into production-style APIs
 - Prompt engineering for consistency
@@ -175,17 +175,17 @@ root/
 - Failure-mode handling
 - Separation of concerns
 - Heuristic vs. LLM tradeoffs
-```
 
-```markdown
+
+
 Fallback behavior handles Gemini API failures gracefully.
-```
+
 
 ---
 
-```markdown
+
 ## Environment Variables
-```
+
 
 ```text
 SESSION_SECRET=
@@ -205,9 +205,9 @@ REACT_APP_API_BASE_URL=
 
 ---
 
-```markdown
+
 ## Running Locally
-```
+
 
 ```bash
 cd backend
@@ -231,19 +231,19 @@ Runs at: http://localhost:3001
 
 ---
 
-```markdown
+
 ## Deployment
 - Backend deployed as serverless Express on Vercel
 - Frontend deployed on Vercel
 - Environment variables configured via Vercel dashboard
-```
+
 
 ---
 
-```markdown
+
 ## Future Improvements
 - Automated evaluation metrics
 - User feedback loops
 - Confidence scoring
 - Observability at scale
-```
+
